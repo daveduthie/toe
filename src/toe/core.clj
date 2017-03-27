@@ -16,16 +16,17 @@
 
 ;; # Draw board on screen
 (defn render-board [b]
-  ;; (println)
-  (doseq [row (range 3)]
-    (doseq [col (range 3)]
-      (-> (str ((b row) col))
-          (clojure.string/replace #"[:-]" " ")
-          (print ""))
-      (if (< col 2) (print "|")))
-    (if (< row 2)
-      (println "\n ---------")
-      (println))))
+  (let [max-index (count b)]
+    (doseq [row (range max-index)]
+      (print " ")
+      (doseq [col (range max-index)]
+        (print (-> (str (get-in b [row col]))
+                   (clojure.string/replace #"[:-]" " "))
+               "")
+        (if (< col (dec max-index)) (print "|")))
+      (if (< row (dec max-index))
+        (println "\n" (apply str (repeat (dec (* 4 max-index)) "-")))
+        (println)))))
 
 ;; # Get input
 (defn get-input
@@ -99,7 +100,6 @@
 
 (defn diagonals [b]
   (let [size (count b)]
-    ;; map top row
     (mapcat (fn [x] (vector (diagonal b x 0 inc)
                             (diagonal b x (dec size) dec)))
             (range size))))
@@ -145,7 +145,6 @@
                        x
                        (try (Integer/parseInt x)
                             (catch NumberFormatException e
-                     ;; (println (.getMessage e))
                               (new-game)))))]
 
     (let [size       (get-input "What size grid would you like? DEFAULT: 3" 3)
