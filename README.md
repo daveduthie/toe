@@ -1,6 +1,6 @@
 # toe
 
-FIXME: description
+[Toe · GitHub Pages](https://daveduthie.github.io/toe/)
 
 ## Installation
 
