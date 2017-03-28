@@ -2938,27 +2938,34 @@ net.brehaut.ClojureTools = (function (SH) {
     (for [x (range size)]
       (map #(get-in b %)
            (partition 2 (interleave (range size) (repeat x)))))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn diagonal [b x-start y-start f]
+</td><td class="codes"><pre class="brush: clojure">(defn right-&amp;-left-diagonals [b x-coord y-coord]
+  (let [size (count b)
+        diag (fn [f]
+               (loop [elems []
+                      x x-coord
+                      y y-coord]
+                 (if-let [e (get-in b [x y])]
+                   (recur (conj elems e)
+                          (inc x)
+                          (f y))
+                   elems)))]
+    (map diag [inc dec])))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn diagonals [b win-length]
   (let [size (count b)]
-    (loop [elems []
-           x x-start
-           y y-start]
-      (if (= x size)
-        elems
-        (recur (conj elems (get-in b [x y]))
-               (inc x)
-               (f y))))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn diagonals [b]
-  (let [size (count b)]
-    (mapcat (fn [x] (vector (diagonal b x 0 inc)
-                            (diagonal b x (dec size) dec)))
-            (range size))))</pre></td></tr><tr><td class="docs">
+    (filter #(&gt;= (count %) win-length)
+            (concat
+             ;; top row
+             (mapcat (fn [y] (right-&amp;-left-diagonals b 0 y))
+                     (range size))
+             ;; walk down edges
+             (mapcat (fn [x y] (right-&amp;-left-diagonals b x y))
+                     (interleave (range 1 size) (range 1 size))
+                     (cycle [0 (dec size)]))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn winner [b win-length]
   (let [size       (count b)
         win-slices (concat (rows b)
                            (columns b)
-                           (take-while #(&gt;= (count %) win-length)
-                                       (diagonals b)))]
+                           (diagonals b win-length))]
     (some (fn [slice]
             (some #(and (&gt;= (count %) win-length)
                         (not= :- (first %))

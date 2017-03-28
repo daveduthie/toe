@@ -87,29 +87,36 @@
       (map #(get-in b %)
            (partition 2 (interleave (range size) (repeat x)))))))
 
-(defn diagonal [b x-start y-start f]
-  (let [size (count b)]
-    (loop [elems []
-           x x-start
-           y y-start]
-      (if (= x size)
-        elems
-        (recur (conj elems (get-in b [x y]))
-               (inc x)
-               (f y))))))
+(defn right-&-left-diagonals [b x-coord y-coord]
+  (let [size (count b)
+        diag (fn [f]
+               (loop [elems []
+                      x x-coord
+                      y y-coord]
+                 (if-let [e (get-in b [x y])]
+                   (recur (conj elems e)
+                          (inc x)
+                          (f y))
+                   elems)))]
+    (map diag [inc dec])))
 
-(defn diagonals [b]
+(defn diagonals [b win-length]
   (let [size (count b)]
-    (mapcat (fn [x] (vector (diagonal b x 0 inc)
-                            (diagonal b x (dec size) dec)))
-            (range size))))
+    (filter #(>= (count %) win-length)
+            (concat
+             ;; top row
+             (mapcat (fn [y] (right-&-left-diagonals b 0 y))
+                     (range size))
+             ;; walk down edges
+             (mapcat (fn [x y] (right-&-left-diagonals b x y))
+                     (interleave (range 1 size) (range 1 size))
+                     (cycle [0 (dec size)]))))))
 
 (defn winner [b win-length]
   (let [size       (count b)
         win-slices (concat (rows b)
                            (columns b)
-                           (take-while #(>= (count %) win-length)
-                                       (diagonals b)))]
+                           (diagonals b win-length))]
     (some (fn [slice]
             (some #(and (>= (count %) win-length)
                         (not= :- (first %))
