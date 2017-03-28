@@ -12,6 +12,13 @@
    [:o :x :o]
    [:o :x :x]])
 
+(def test-board-3
+  [[:a :b :c :d]
+   [:e :f :g :h]
+   [:i :j :k :l]
+   [:m :n :o :p]])
+
+
 ;; returns true if a player has at least `win-length` in a row
 (deftest winner-test
   (is (= :o
@@ -23,3 +30,13 @@
 (deftest draw-test
   (is (true?
        (draw test-board-2))))
+
+(deftest diagonals-test
+
+  (testing "right-&-left"
+    (is (= (right-&-left-diagonals test-board-3 0 2)
+           [[:c :h] [:c :f :i]])))
+
+  (testing "all diagonals"
+    (is (= (diagonals test-board-3 3)
+           [[:a :f :k :p] [:b :g :l] [:c :f :i] [:d :g :j :m] [:e :j :o] [:h :k :n]]))))
