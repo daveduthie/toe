@@ -52,11 +52,11 @@
        response
        (prompt-move)))))
 
-(defn prompt-replay []
+(defn replay? []
   (let [response (get-input "Play again? (yes/no)")]
-    (cond (= \y (first response)) (new-game)
-          (= \n (first response)) (System/exit 0)
-          :else                    (prompt-replay))))
+    (cond (= \y (first response)) true
+          (= \n (first response)) false
+          :else                    (replay?))))
 
 ;; # Update board
 (defn update-board [b player]
@@ -124,28 +124,27 @@
                   (partition-by identity slice)))
           win-slices)))
 
-(defn draw [b]
+(defn draw? [board]
   (not-any? #(= :- %)
             (for [x (range 3)
                   y (range 3)]
-              (get-in b [x y]))))
+              (get-in board [x y]))))
 
-(defn win-or-draw [b win-length]
-  (if-let [w (winner b win-length)]
-    (do (println "The winner is" (clojure.string/replace w #":" ""))
-        true)
-    (if (draw b)
-      (do (println "It's a draw... ")
-          true))))
+(defn result [board win-length]
+  (if-let [w (winner board win-length)]
+    w
+    (if (draw? board) :draw :unfinished)))
 
 ;; # Run game
 (defn game [board win-length players]
   (render-board board)
-  (if (win-or-draw board win-length)
-    (prompt-replay)
-    (game (update-board board (first players))
-          win-length
-          (next players))))
+  (let [r (result board win-length)]
+    (cond
+      (= :unfinished r) (game (update-board board (first players))
+                              win-length
+                              (next players))
+      (= :draw r)       nil
+      :else             r)))
 
 (defn new-game []
   (letfn [(parse [x] (if (integer? x)
@@ -154,10 +153,18 @@
                             (catch NumberFormatException e
                               (new-game)))))]
 
-    (let [size       (get-input "What size grid would you like? DEFAULT: 3" 3)
-          win-length (get-input (str "How many symbols in a row to win? DEFAULT:" size) size)]
+    (loop [score {:x 0 :o 0}]
+      (let [size       (get-input "What size grid would you like? DEFAULT: 3" 3)
+            win-length (get-input (str "How many symbols in a row to win? DEFAULT:" size) size)
+            winner     (game (new-board (parse size)) (parse win-length) (cycle [:x :o]))]
 
-      (game (new-board (parse size)) (parse win-length) (cycle [:x :o])))))
+        (let [score' (if-not (nil? winner)
+                       (update score winner inc)
+                       score)]
+          (println "Score: x" (:x score') " o" (:o score'))
+          (if (replay?)
+            (recur score')
+            (System/exit 0)))))))
 
 (defn -main
   "Entry Point"
