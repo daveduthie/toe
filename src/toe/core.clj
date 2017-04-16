@@ -15,15 +15,17 @@
   (vec (repeat size (vec (repeat size :-)))))
 
 ;; # Draw board on screen
-(defn render-board [b]
+(defn render-board [b & msg]
   (let [max-index (count b)]
+    (println (str (char 27) "[2J")) ; clear screen
+    (println (str (char 27) "[;H")) ; set cursor to top
+    (if msg (apply println msg))
     (doseq [row (range max-index)]
-      (print " ")
+      (print " ") ; nudge board away from left edge
       (doseq [col (range max-index)]
         (print (-> (str (get-in b [row col]))
-                   (clojure.string/replace #"[:-]" " "))
-               "")
-        (if (< col (dec max-index)) (print "|")))
+                   (clojure.string/replace #"[:-]" " ")))
+        (if (< col (dec max-index)) (print " |")))
       (if (< row (dec max-index))
         (println "\n" (apply str (repeat (dec (* 4 max-index)) "-")))
         (println)))))
@@ -62,13 +64,11 @@
         [row col] (prompt-move)]
     (cond
       (some #(> % max-index) [row col])
-      (do (println (str "Enter numbers between " 0 " and " max-index))
-          (render-board b)
+      (do (render-board b (str "Enter numbers between " 0 " and " max-index))
           (update-board b player))
 
       (not= :- (get-in b [row col]))
-      (do (println "That square is not empty")
-          (render-board b)
+      (do (render-board b "That square is not empty")
           (update-board b player))
 
       :else
