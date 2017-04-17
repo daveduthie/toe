@@ -18,6 +18,11 @@
    [:i :j :k :l]
    [:m :n :o :p]])
 
+(def test-board-4 ;; it's a draw
+  [[:x :- :o]
+   [:o :x :x]
+   [:x :o :o]])
+
 
 (deftest diagonals-test
 
@@ -38,5 +43,9 @@
 
 ;; returns true if no squares are unfilled
 (deftest draw-test
-  (is (true?
-       (draw? test-board-2))))
+  (is (false?
+       (draw? test-board-2 3))))
+
+(deftest winnable-test
+  (let [diag (first (diagonals test-board-4 3))]
+    (is (false? (winnable? diag 3)))))

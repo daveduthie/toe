@@ -1,14 +1,8 @@
-;; Requirements
-;;
-;;     - [x] get input
-;;     - [x] validate input
-;;     - [x] update board
-;;     - [x] render board
-;;     - [x] test win-draw conditions
+;;;; TODO
+;;   - [x] detect unwinnable games and report draw
+;;   - [ ] draw row and column id's
 (ns toe.core
   (:gen-class))
-
-(declare new-game)
 
 ;; # Create board
 (defn new-board [size]
@@ -114,7 +108,7 @@
 
 (defn winner [b win-length]
   (let [size       (count b)
-        win-slices (concat (rows b)
+        slices (concat (rows b)
                            (columns b)
                            (diagonals b win-length))]
     (some (fn [slice]
@@ -122,18 +116,33 @@
                         (not= :- (first %))
                         (first %))
                   (partition-by identity slice)))
-          win-slices)))
+          slices)))
 
-(defn draw? [board]
-  (not-any? #(= :- %)
-            (for [x (range 3)
-                  y (range 3)]
-              (get-in board [x y]))))
+(defn winnable? [coll win-length]
+  (loop [[head & tail] coll
+         x             0
+         o             0]
+    (cond (or (= win-length x) (= win-length o)) true
+
+          (nil? head) false
+
+          (= head :x) (recur tail (inc x) 0      )
+          (= head :o) (recur tail 0       (inc o))
+          :else       (recur tail (inc x) (inc o)))))
+
+(defn draw?
+  "Returns true if neither player can possibly get `win-length` in a row."
+  [board win-length]
+  (let [slices (concat (rows board)
+                       (columns board)
+                       (diagonals board win-length))]
+    (not-any? #(winnable? % win-length)
+              slices)))
 
 (defn result [board win-length]
   (if-let [w (winner board win-length)]
     w
-    (if (draw? board) :draw :unfinished)))
+    (if (draw? board win-length) :draw :unfinished)))
 
 ;; # Run game
 (defn game [board win-length players]

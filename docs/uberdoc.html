@@ -2866,27 +2866,24 @@ net.brehaut.ClojureTools = (function (SH) {
   };
 })(SyntaxHighlighter);
 </script><title>toe -- Marginalia</title></head><body><table><tr><td class="docs"><div class="header"><h1 class="project-name"><a href="github.com/daveduthie/toe">toe</a></h1><h2 class="project-version">0.1.0-SNAPSHOT</h2><br /><p>FIXME: write description</p>
-</div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">org.clojure/clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.8.0</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#toe.core">toe.core</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#toe.core" name="toe.core"><h1 class="project-name">toe.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>Requirements</p>
-
-<pre><code>- [x] get input
-- [x] validate input
-- [x] update board
-- [x] render board
-- [x] test win-draw conditions
-</code></pre>
+</div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">org.clojure/clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.8.0</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#toe.core">toe.core</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#toe.core" name="toe.core"><h1 class="project-name">toe.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>TODO
+  - [x] detect unwinnable games and report draw
+  - [ ] draw row and column id's</p>
 </td><td class="codes"><pre class="brush: clojure">(ns toe.core
-  (:gen-class))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(declare new-game)</pre></td></tr><tr><td class="docs"><h1>Create board</h1>
+  (:gen-class))</pre></td></tr><tr><td class="docs"><h1>Create board</h1>
 </td><td class="codes"><pre class="brush: clojure">(defn new-board [size]
   (vec (repeat size (vec (repeat size :-)))))</pre></td></tr><tr><td class="docs"><h1>Draw board on screen</h1>
-</td><td class="codes"><pre class="brush: clojure">(defn render-board [b]
+</td><td class="codes"><pre class="brush: clojure">(defn render-board [b &amp; msg]
   (let [max-index (count b)]
+    (println (str (char 27) &quot;[2J&quot;)) ; clear screen
+    (println (str (char 27) &quot;[;H&quot;)) ; set cursor to top
+    (if msg (apply println msg))
     (doseq [row (range max-index)]
-      (print &quot; &quot;)
+      (print &quot; &quot;) ; nudge board away from left edge
       (doseq [col (range max-index)]
         (print (-&gt; (str (get-in b [row col]))
                    (clojure.string/replace #&quot;[:-]&quot; &quot; &quot;)))
-        (if (&lt; col (dec max-index)) (print &quot;|&quot;)))
+        (if (&lt; col (dec max-index)) (print &quot; |&quot;)))
       (if (&lt; row (dec max-index))
         (println &quot;\n&quot; (apply str (repeat (dec (* 4 max-index)) &quot;-&quot;)))
         (println)))))</pre></td></tr><tr><td class="docs"><h1>Get input</h1>
@@ -2909,22 +2906,20 @@ net.brehaut.ClojureTools = (function (SH) {
      (if (= 2 (count response))
        response
        (prompt-move)))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn prompt-replay []
+</td><td class="codes"><pre class="brush: clojure">(defn replay? []
   (let [response (get-input &quot;Play again? (yes/no)&quot;)]
-    (cond (= \y (first response)) (new-game)
-          (= \n (first response)) (System/exit 0)
-          :else                    (prompt-replay))))</pre></td></tr><tr><td class="docs"><h1>Update board</h1>
+    (cond (= \y (first response)) true
+          (= \n (first response)) false
+          :else                    (replay?))))</pre></td></tr><tr><td class="docs"><h1>Update board</h1>
 </td><td class="codes"><pre class="brush: clojure">(defn update-board [b player]
   (let [max-index (dec (count b))
         [row col] (prompt-move)]
     (cond
       (some #(&gt; % max-index) [row col])
-      (do (println (str &quot;Enter numbers between &quot; 0 &quot; and &quot; max-index))
-          (render-board b)
+      (do (render-board b (str &quot;Enter numbers between &quot; 0 &quot; and &quot; max-index))
           (update-board b player))
       (not= :- (get-in b [row col]))
-      (do (println &quot;That square is not empty&quot;)
-          (render-board b)
+      (do (render-board b &quot;That square is not empty&quot;)
           (update-board b player))
       :else
       (assoc-in b [row col] player))))</pre></td></tr><tr><td class="docs"><h1>Test game-over conditions</h1>
@@ -2963,7 +2958,7 @@ net.brehaut.ClojureTools = (function (SH) {
                      (cycle [0 (dec size)]))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn winner [b win-length]
   (let [size       (count b)
-        win-slices (concat (rows b)
+        slices (concat (rows b)
                            (columns b)
                            (diagonals b win-length))]
     (some (fn [slice]
@@ -2971,35 +2966,53 @@ net.brehaut.ClojureTools = (function (SH) {
                         (not= :- (first %))
                         (first %))
                   (partition-by identity slice)))
-          win-slices)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn draw [b]
-  (not-any? #(= :- %)
-            (for [x (range 3)
-                  y (range 3)]
-              (get-in b [x y]))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn win-or-draw [b win-length]
-  (if-let [w (winner b win-length)]
-    (do (println &quot;The winner is&quot; (clojure.string/replace w #&quot;:&quot; ))
-        true)
-    (if (draw b)
-      (do (println &quot;It's a draw... &quot;)
-          true))))</pre></td></tr><tr><td class="docs"><h1>Run game</h1>
+          slices)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn winnable? [coll win-length]
+  (loop [[head &amp; tail] coll
+         x             0
+         o             0]
+    (cond (or (= win-length x) (= win-length o)) true
+          (nil? head) false
+          (= head :x) (recur tail (inc x) 0      )
+          (= head :o) (recur tail 0       (inc o))
+          :else       (recur tail (inc x) (inc o)))))</pre></td></tr><tr><td class="docs"><p>Returns true if neither player can possibly get <code>win-length</code> in a row.</p>
+</td><td class="codes"><pre class="brush: clojure">(defn draw?
+  [board win-length]
+  (let [slices (concat (rows board)
+                       (columns board)
+                       (diagonals board win-length))]
+    (not-any? #(winnable? % win-length)
+              slices)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn result [board win-length]
+  (if-let [w (winner board win-length)]
+    w
+    (if (draw? board win-length) :draw :unfinished)))</pre></td></tr><tr><td class="docs"><h1>Run game</h1>
 </td><td class="codes"><pre class="brush: clojure">(defn game [board win-length players]
   (render-board board)
-  (if (win-or-draw board win-length)
-    (prompt-replay)
-    (game (update-board board (first players))
-          win-length
-          (next players))))</pre></td></tr><tr><td class="docs">
+  (let [r (result board win-length)]
+    (cond
+      (= :unfinished r) (game (update-board board (first players))
+                              win-length
+                              (next players))
+      (= :draw r)       nil
+      :else             r)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn new-game []
   (letfn [(parse [x] (if (integer? x)
                        x
                        (try (Integer/parseInt x)
                             (catch NumberFormatException e
                               (new-game)))))]
-    (let [size       (get-input &quot;What size grid would you like? DEFAULT: 3&quot; 3)
-          win-length (get-input (str &quot;How many symbols in a row to win? DEFAULT:&quot; size) size)]
-      (game (new-board (parse size)) (parse win-length) (cycle [:x :o])))))</pre></td></tr><tr><td class="docs"><p>Entry Point</p>
+    (loop [score {:x 0 :o 0}]
+      (let [size       (get-input &quot;What size grid would you like? DEFAULT: 3&quot; 3)
+            win-length (get-input (str &quot;How many symbols in a row to win? DEFAULT:&quot; size) size)
+            winner     (game (new-board (parse size)) (parse win-length) (cycle [:x :o]))]
+        (let [score' (if-not (nil? winner)
+                       (update score winner inc)
+                       score)]
+          (println &quot;Score: x&quot; (:x score') &quot; o&quot; (:o score'))
+          (if (replay?)
+            (recur score')
+            (System/exit 0)))))))</pre></td></tr><tr><td class="docs"><p>Entry Point</p>
 </td><td class="codes"><pre class="brush: clojure">(defn -main
   [&amp; args]
   (new-game))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a><div id="floating-toc"><ul><li class="floating-toc-li" id="floating-toc_toe.core">toe.core</li></ul></div></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
