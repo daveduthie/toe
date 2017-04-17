@@ -3016,8 +3016,9 @@ net.brehaut.ClojureTools = (function (SH) {
       (= :unfinished r) (game (update-board board (first players))
                               win-length
                               (next players))
-      (= :draw r)       nil
-      :else             r)))</pre></td></tr><tr><td class="docs">
+      (= :draw r)       (do (println &quot;It's a DRAW&quot;) nil)
+      :else             (do (println &quot;The winner is&quot; (re-find #&quot;\w&quot; (str r))) r))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(str :a)</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn new-game []
   (loop [score {:x 0 :o 0}]
     (let [size       (get-input {:msg &quot;What size grid would you like? DEFAULT: 3&quot; :type :int :default-val 3})

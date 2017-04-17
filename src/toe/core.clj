@@ -177,8 +177,10 @@
       (= :unfinished r) (game (update-board board (first players))
                               win-length
                               (next players))
-      (= :draw r)       nil
-      :else             r)))
+      (= :draw r)       (do (println "It's a DRAW") nil)
+      :else             (do (println "The winner is" (re-find #"\w" (str r))) r))))
+
+(str :a)
 
 (defn new-game []
   (loop [score {:x 0 :o 0}]
