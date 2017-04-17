@@ -1,7 +1,3 @@
-;;;; TODO
-;;   - [x] detect unwinnable games and report draw
-;;   - [ ] draw row and column id's
-;;   - [ ] extract number parser to separate fn to avoid duplication
 (ns toe.core
   (:gen-class)
   (:require [clojure.string :as str]))
