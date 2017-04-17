@@ -6,16 +6,10 @@
 (defn new-board [size]
   (vec (repeat size (vec (repeat size :-)))))
 
-(defn get-char [i]
+;; # Draw board on screen
+(defn as-char [i]
   (char (+ 65 i)))
 
-(defn get-int [letter]
-  (let [c (if (string? letter)
-            (first (str/upper-case letter))
-            letter)]
-    (- (int c) 65)))
-
-;; # Draw board on screen
 (defn render-board [b & msg]
   (let [max-index (count b)]
     (println (str (char 27) "[2J")) ; clear screen
@@ -23,7 +17,7 @@
     (if msg (apply println msg))
     (apply println ; print letters along top
            (interleave (cycle " ")
-                       (map #(get-char %) (range max-index))))
+                       (map #(as-char %) (range max-index))))
     (doseq [row (range max-index)]
       (print (inc row))  ; print numbers along left
       (doseq [col (range max-index)]
@@ -42,7 +36,17 @@
          (catch NumberFormatException e
            nil))))
 
-(defn get-input [{:keys [msg type default-val]
+(defn as-int [letter]
+  (let [c (if (string? letter)
+            (first (str/upper-case letter))
+            letter)]
+    (- (int c) 65)))
+
+(defn get-input
+  "If you specify a type of `:int`, `:char`, or `:mixed` (one int and one char),
+  `get-input` will loop until it receives the info it expects.
+  Otherwise it gives you any old input--garbage in, garbage out."
+  [{:keys [msg type default-val]
                   :or   {msg nil type :default default-val nil}}]
   (if msg (println msg))
   (let [input (clojure.string/trim (read-line))]
@@ -62,7 +66,7 @@
         :mixed   (let [i (parse (re-find #"\d" input))
                        c (first (re-find #"[A-z]" (str/upper-case input)))]
                    (if-not (or (nil? i) (nil? c))
-                     [(dec i) (get-int c)]
+                     [(dec i) (as-int c)]
                      (get-input {:msg  "Try entering a letter and a number"
                                  :type :mixed})))
         :default input)
@@ -186,15 +190,14 @@
   (loop [score {:x 0 :o 0}]
     (let [size       (get-input {:msg "What size grid would you like? DEFAULT: 3" :type :int :default-val 3})
           win-length (get-input {:msg (str "How many symbols in a row to win? DEFAULT:" size) :type :int :default-val size})
-          winner     (game (new-board (parse size)) (parse win-length) (cycle [:x :o]))]
-
-      (let [score' (if-not (nil? winner)
-                     (update score winner inc)
-                     score)]
-        (println "Score: x" (:x score') " o" (:o score'))
-        (if (replay?)
-          (recur score')
-          (System/exit 0))))))
+          winner     (game (new-board (parse size)) (parse win-length) (cycle [:x :o]))
+          score'     (if-not (nil? winner)
+                       (update score winner inc)
+                       score)]
+      (println "Score: x" (:x score') " o" (:o score'))
+      (if (replay?)
+        (recur score')
+        (System/exit 0)))))
 
 (defn -main
   "Entry Point"
