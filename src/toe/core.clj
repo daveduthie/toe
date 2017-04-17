@@ -9,8 +9,11 @@
 (defn get-char [i]
   (char (+ 65 i)))
 
-(defn get-int [upper]
-  (- (int upper) 65))
+(defn get-int [letter]
+  (let [c (if (string? letter)
+            (first (str/upper-case letter))
+            letter)]
+    (- (int c) 65)))
 
 ;; # Draw board on screen
 (defn render-board [b & msg]
@@ -37,49 +40,58 @@
     x
     (try (Integer/parseInt x)
          (catch NumberFormatException e
-           (println (.getMessage e))))))
+           nil))))
 
-(defn get-input
-  ([msg] (get-input msg nil))
-  ([msg default-value]
-   (println msg)
-   (let [input (clojure.string/trim (read-line))]
-     (cond
-       (not-empty input)          (clojure.string/lower-case input)
-       (not (nil? default-value)) default-value
-       :else                      (get-input msg default-value)))))
-
-;; #"[A-Z].*\d+"
-(defn prompt-move
-  ([] (prompt-move ""))
-  ([message]
-   (println message)
-   (let [input  (get-input "\nWhere would you like to move? (column & row):")
-         column (get-int (first (str/upper-case (re-find #"[A-z]" input))))
-         row    (dec (parse (re-find #"\d+" input)))]
-     [row column])))
-
-(defn replay? []
-  (let [response (get-input "Play again? (yes/no)")]
-    (cond (= \y (first response)) true
-          (= \n (first response)) false
-          :else                    (replay?))))
-
-;; # Update board
-(defn update-board [b player]
-  (let [max-index (dec (count b))
-        [row col] (prompt-move)]
+(defn get-input [{:keys [msg type default-val]
+                  :or   {msg nil type :default default-val nil}}]
+  (if msg (println msg))
+  (let [input (clojure.string/trim (read-line))]
     (cond
-      (some #(> % max-index) [row col])
-      (do (render-board b (str "Enter numbers between " 0 " and " max-index))
-          (update-board b player))
+      (not-empty input)
+      (case type
+        :int     (if-let [i (parse input)]
+                   i
+                   (get-input {:msg         "Doesn't look like an integer"
+                               :type        type
+                               :default-val default-val}))
+        :char    (if-let [c (first (str/upper-case input))]
+                   c
+                   (get-input {:msg         "Doesn't look like a letter"
+                               :type        type
+                               :default-val default-val}))
+        :mixed   (let [i (parse (re-find #"\d" input))
+                       c (first (re-find #"[A-z]" (str/upper-case input)))]
+                   (if-not (or (nil? i) (nil? c))
+                     [(dec i) (get-int c)]
+                     (get-input {:msg  "Try entering a letter and a number"
+                                 :type :mixed})))
+        :default input)
 
-      (not= :- (get-in b [row col]))
-      (do (render-board b "That square is not empty")
-          (update-board b player))
+      (not (nil? default-val))
+      default-val
 
       :else
-      (assoc-in b [row col] player))))
+      (get-input {:msg msg :type type :default-val default-val}))))
+
+(defn replay? []
+  (let [response (get-input {:msg "Play again? (YES/no)" :type :char :default-val \Y})]
+    (cond (= \Y response) true
+          (= \N response) false
+          :else           (replay?))))
+
+;; # Update board
+(defn update-board [board player & message]
+  (if (seq? message) (apply println message))
+  (let [max-index (dec (count board))
+        [row col] (get-input {:msg "\nWhere would you like to move?" :type :mixed})]
+
+    (cond
+      (and (every? #(<= 0 % max-index) [row col])
+           (= :- (get-in board [row col])))
+      (assoc-in board [row col] player)
+
+      :else
+      (update-board board player "That move appears to be impossible"))))
 
 ;; # Test game-over conditions
 (defn rows [b]
@@ -170,8 +182,8 @@
 
 (defn new-game []
   (loop [score {:x 0 :o 0}]
-    (let [size       (get-input "What size grid would you like? DEFAULT: 3" 3)
-          win-length (get-input (str "How many symbols in a row to win? DEFAULT:" size) size)
+    (let [size       (get-input {:msg "What size grid would you like? DEFAULT: 3" :type :int :default-val 3})
+          win-length (get-input {:msg (str "How many symbols in a row to win? DEFAULT:" size) :type :int :default-val size})
           winner     (game (new-board (parse size)) (parse win-length) (cycle [:x :o]))]
 
       (let [score' (if-not (nil? winner)
