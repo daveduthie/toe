@@ -1,12 +1,20 @@
 ;;;; TODO
 ;;   - [x] detect unwinnable games and report draw
 ;;   - [ ] draw row and column id's
+;;   - [ ] extract number parser to separate fn to avoid duplication
 (ns toe.core
-  (:gen-class))
+  (:gen-class)
+  (:require [clojure.string :as str]))
 
 ;; # Create board
 (defn new-board [size]
   (vec (repeat size (vec (repeat size :-)))))
+
+(defn get-char [i]
+  (char (+ 65 i)))
+
+(defn get-int [upper]
+  (- (int upper) 65))
 
 ;; # Draw board on screen
 (defn render-board [b & msg]
@@ -14,8 +22,11 @@
     (println (str (char 27) "[2J")) ; clear screen
     (println (str (char 27) "[;H")) ; set cursor to top
     (if msg (apply println msg))
+    (apply println ; print letters along top
+           (interleave (cycle " ")
+                       (map #(get-char %) (range max-index))))
     (doseq [row (range max-index)]
-      (print " ") ; nudge board away from left edge
+      (print (inc row))  ; print numbers along left
       (doseq [col (range max-index)]
         (print (-> (str (get-in b [row col]))
                    (clojure.string/replace #"[:-]" " ")))
@@ -25,6 +36,13 @@
         (println)))))
 
 ;; # Get input
+(defn parse [x]
+  (if (integer? x)
+    x
+    (try (Integer/parseInt x)
+         (catch NumberFormatException e
+           (println (.getMessage e))))))
+
 (defn get-input
   ([msg] (get-input msg nil))
   ([msg default-value]
@@ -33,18 +51,17 @@
      (cond
        (not-empty input)          (clojure.string/lower-case input)
        (not (nil? default-value)) default-value
-       :else                      (get-input msg "")))))
+       :else                      (get-input msg default-value)))))
 
+;; #"[A-Z].*\d+"
 (defn prompt-move
   ([] (prompt-move ""))
   ([message]
    (println message)
-   (let [response (map #(Integer/parseInt %)
-                       (re-seq #"\w+"
-                               (get-input "\nWhere would you like to move? (row & column):")))]
-     (if (= 2 (count response))
-       response
-       (prompt-move)))))
+   (let [input  (get-input "\nWhere would you like to move? (column & row):")
+         column (get-int (first (str/upper-case (re-find #"[A-z]" input))))
+         row    (dec (parse (re-find #"\d+" input)))]
+     [row column])))
 
 (defn replay? []
   (let [response (get-input "Play again? (yes/no)")]
@@ -109,8 +126,8 @@
 (defn winner [b win-length]
   (let [size       (count b)
         slices (concat (rows b)
-                           (columns b)
-                           (diagonals b win-length))]
+                       (columns b)
+                       (diagonals b win-length))]
     (some (fn [slice]
             (some #(and (>= (count %) win-length)
                         (not= :- (first %))
@@ -126,7 +143,7 @@
 
           (nil? head) false
 
-          (= head :x) (recur tail (inc x) 0      )
+          (= head :x) (recur tail (inc x) 0)
           (= head :o) (recur tail 0       (inc o))
           :else       (recur tail (inc x) (inc o)))))
 
@@ -156,24 +173,18 @@
       :else             r)))
 
 (defn new-game []
-  (letfn [(parse [x] (if (integer? x)
-                       x
-                       (try (Integer/parseInt x)
-                            (catch NumberFormatException e
-                              (new-game)))))]
+  (loop [score {:x 0 :o 0}]
+    (let [size       (get-input "What size grid would you like? DEFAULT: 3" 3)
+          win-length (get-input (str "How many symbols in a row to win? DEFAULT:" size) size)
+          winner     (game (new-board (parse size)) (parse win-length) (cycle [:x :o]))]
 
-    (loop [score {:x 0 :o 0}]
-      (let [size       (get-input "What size grid would you like? DEFAULT: 3" 3)
-            win-length (get-input (str "How many symbols in a row to win? DEFAULT:" size) size)
-            winner     (game (new-board (parse size)) (parse win-length) (cycle [:x :o]))]
-
-        (let [score' (if-not (nil? winner)
-                       (update score winner inc)
-                       score)]
-          (println "Score: x" (:x score') " o" (:o score'))
-          (if (replay?)
-            (recur score')
-            (System/exit 0)))))))
+      (let [score' (if-not (nil? winner)
+                     (update score winner inc)
+                     score)]
+        (println "Score: x" (:x score') " o" (:o score'))
+        (if (replay?)
+          (recur score')
+          (System/exit 0))))))
 
 (defn -main
   "Entry Point"

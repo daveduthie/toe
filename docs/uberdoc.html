@@ -2868,18 +2868,27 @@ net.brehaut.ClojureTools = (function (SH) {
 </script><title>toe -- Marginalia</title></head><body><table><tr><td class="docs"><div class="header"><h1 class="project-name"><a href="github.com/daveduthie/toe">toe</a></h1><h2 class="project-version">0.1.0-SNAPSHOT</h2><br /><p>FIXME: write description</p>
 </div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">org.clojure/clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.8.0</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#toe.core">toe.core</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#toe.core" name="toe.core"><h1 class="project-name">toe.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs"><p>TODO
   - [x] detect unwinnable games and report draw
-  - [ ] draw row and column id's</p>
+  - [ ] draw row and column id's
+  - [ ] extract number parser to separate fn to avoid duplication</p>
 </td><td class="codes"><pre class="brush: clojure">(ns toe.core
-  (:gen-class))</pre></td></tr><tr><td class="docs"><h1>Create board</h1>
+  (:gen-class)
+  (:require [clojure.string :as str]))</pre></td></tr><tr><td class="docs"><h1>Create board</h1>
 </td><td class="codes"><pre class="brush: clojure">(defn new-board [size]
-  (vec (repeat size (vec (repeat size :-)))))</pre></td></tr><tr><td class="docs"><h1>Draw board on screen</h1>
+  (vec (repeat size (vec (repeat size :-)))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn get-char [i]
+  (char (+ 65 i)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn get-int [upper]
+  (- (int upper) 65))</pre></td></tr><tr><td class="docs"><h1>Draw board on screen</h1>
 </td><td class="codes"><pre class="brush: clojure">(defn render-board [b &amp; msg]
   (let [max-index (count b)]
     (println (str (char 27) &quot;[2J&quot;)) ; clear screen
     (println (str (char 27) &quot;[;H&quot;)) ; set cursor to top
     (if msg (apply println msg))
+    (apply println ; print letters along top
+           (interleave (cycle &quot; &quot;)
+                       (map #(get-char %) (range max-index))))
     (doseq [row (range max-index)]
-      (print &quot; &quot;) ; nudge board away from left edge
+      (print (inc row))  ; print numbers along left
       (doseq [col (range max-index)]
         (print (-&gt; (str (get-in b [row col]))
                    (clojure.string/replace #&quot;[:-]&quot; &quot; &quot;)))
@@ -2887,6 +2896,12 @@ net.brehaut.ClojureTools = (function (SH) {
       (if (&lt; row (dec max-index))
         (println &quot;\n&quot; (apply str (repeat (dec (* 4 max-index)) &quot;-&quot;)))
         (println)))))</pre></td></tr><tr><td class="docs"><h1>Get input</h1>
+</td><td class="codes"><pre class="brush: clojure">(defn parse [x]
+  (if (integer? x)
+    x
+    (try (Integer/parseInt x)
+         (catch NumberFormatException e
+           (println (.getMessage e))))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn get-input
   ([msg] (get-input msg nil))
   ([msg default-value]
@@ -2895,17 +2910,15 @@ net.brehaut.ClojureTools = (function (SH) {
      (cond
        (not-empty input)          (clojure.string/lower-case input)
        (not (nil? default-value)) default-value
-       :else                      (get-input msg )))))</pre></td></tr><tr><td class="docs">
+       :else                      (get-input msg default-value)))))</pre></td></tr><tr><td class="docs"><h1>"[A-Z].*\d+"</h1>
 </td><td class="codes"><pre class="brush: clojure">(defn prompt-move
   ([] (prompt-move ))
   ([message]
    (println message)
-   (let [response (map #(Integer/parseInt %)
-                       (re-seq #&quot;\w+&quot;
-                               (get-input &quot;\nWhere would you like to move? (row &amp; column):&quot;)))]
-     (if (= 2 (count response))
-       response
-       (prompt-move)))))</pre></td></tr><tr><td class="docs">
+   (let [input  (get-input &quot;\nWhere would you like to move? (column &amp; row):&quot;)
+         column (get-int (first (str/upper-case (re-find #&quot;[A-z]&quot; input))))
+         row    (dec (parse (re-find #&quot;\d+&quot; input)))]
+     [row column])))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn replay? []
   (let [response (get-input &quot;Play again? (yes/no)&quot;)]
     (cond (= \y (first response)) true
@@ -2959,8 +2972,8 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn winner [b win-length]
   (let [size       (count b)
         slices (concat (rows b)
-                           (columns b)
-                           (diagonals b win-length))]
+                       (columns b)
+                       (diagonals b win-length))]
     (some (fn [slice]
             (some #(and (&gt;= (count %) win-length)
                         (not= :- (first %))
@@ -2973,7 +2986,7 @@ net.brehaut.ClojureTools = (function (SH) {
          o             0]
     (cond (or (= win-length x) (= win-length o)) true
           (nil? head) false
-          (= head :x) (recur tail (inc x) 0      )
+          (= head :x) (recur tail (inc x) 0)
           (= head :o) (recur tail 0       (inc o))
           :else       (recur tail (inc x) (inc o)))))</pre></td></tr><tr><td class="docs"><p>Returns true if neither player can possibly get <code>win-length</code> in a row.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn draw?
@@ -2997,22 +3010,17 @@ net.brehaut.ClojureTools = (function (SH) {
       (= :draw r)       nil
       :else             r)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn new-game []
-  (letfn [(parse [x] (if (integer? x)
-                       x
-                       (try (Integer/parseInt x)
-                            (catch NumberFormatException e
-                              (new-game)))))]
-    (loop [score {:x 0 :o 0}]
-      (let [size       (get-input &quot;What size grid would you like? DEFAULT: 3&quot; 3)
-            win-length (get-input (str &quot;How many symbols in a row to win? DEFAULT:&quot; size) size)
-            winner     (game (new-board (parse size)) (parse win-length) (cycle [:x :o]))]
-        (let [score' (if-not (nil? winner)
-                       (update score winner inc)
-                       score)]
-          (println &quot;Score: x&quot; (:x score') &quot; o&quot; (:o score'))
-          (if (replay?)
-            (recur score')
-            (System/exit 0)))))))</pre></td></tr><tr><td class="docs"><p>Entry Point</p>
+  (loop [score {:x 0 :o 0}]
+    (let [size       (get-input &quot;What size grid would you like? DEFAULT: 3&quot; 3)
+          win-length (get-input (str &quot;How many symbols in a row to win? DEFAULT:&quot; size) size)
+          winner     (game (new-board (parse size)) (parse win-length) (cycle [:x :o]))]
+      (let [score' (if-not (nil? winner)
+                     (update score winner inc)
+                     score)]
+        (println &quot;Score: x&quot; (:x score') &quot; o&quot; (:o score'))
+        (if (replay?)
+          (recur score')
+          (System/exit 0))))))</pre></td></tr><tr><td class="docs"><p>Entry Point</p>
 </td><td class="codes"><pre class="brush: clojure">(defn -main
   [&amp; args]
   (new-game))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr></table><div class="footer">Generated by <a href="https://github.com/gdeer81/marginalia">Marginalia</a>.&nbsp;&nbsp;Syntax highlighting provided by Alex Gorbatchev's <a href="http://alexgorbatchev.com/SyntaxHighlighter/">SyntaxHighlighter</a><div id="floating-toc"><ul><li class="floating-toc-li" id="floating-toc_toe.core">toe.core</li></ul></div></div><script type="text/javascript">SyntaxHighlighter.defaults['gutter'] = false;
