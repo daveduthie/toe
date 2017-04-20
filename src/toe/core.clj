@@ -7,25 +7,26 @@
   (vec (repeat size (vec (repeat size :-)))))
 
 ;; # Draw board on screen
-(defn as-char [i]
+(defn int->char [i]
   (char (+ 65 i)))
 
+(defn clear-screen []
+  (println (str (char 27) "[2J"))  ; clear screen
+  (println (str (char 27) "[;H"))) ; set cursor to top
+
 (defn render-board [b & msg]
+  (clear-screen)
   (let [max-index (count b)]
-    (println (str (char 27) "[2J")) ; clear screen
-    (println (str (char 27) "[;H")) ; set cursor to top
     (if msg (apply println msg))
-    (apply println ; print letters along top
-           (interleave (cycle " ")
-                       (map #(as-char %) (range max-index))))
+    (println (str/join (map #(format "   %c" (int->char %)) (range max-index)))) ; print letters along top
     (doseq [row (range max-index)]
-      (print (inc row))  ; print numbers along left
+      (print (format "%02d" (inc row))) ; print numbers along left
       (doseq [col (range max-index)]
         (print (-> (str (get-in b [row col]))
                    (clojure.string/replace #"[:-]" " ")))
         (if (< col (dec max-index)) (print " |")))
       (if (< row (dec max-index))
-        (println "\n" (apply str (repeat (dec (* 4 max-index)) "-")))
+        (println "\n " (apply str (repeat (dec (* 4 max-index)) "-")))
         (println)))))
 
 ;; # Get input
@@ -36,49 +37,37 @@
          (catch NumberFormatException e
            nil))))
 
-(defn as-int [letter]
+(defn char->int [letter]
   (let [c (if (string? letter)
             (first (str/upper-case letter))
             letter)]
     (- (int c) 65)))
 
-(defn get-input
-  "If you specify a type of `:int`, `:char`, or `:mixed` (one int and one char),
-  `get-input` will loop until it receives the info it expects.
-  Otherwise it gives you any old input--garbage in, garbage out."
-  [{:keys [msg type default-val]
-                  :or   {msg nil type :default default-val nil}}]
+(defn read-int
+  "May return nil. Call as `(or (read-int msg) default-value)`"
+  [msg]
   (if msg (println msg))
-  (let [input (clojure.string/trim (read-line))]
-    (cond
-      (not-empty input)
-      (case type
-        :int     (if-let [i (parse input)]
-                   i
-                   (get-input {:msg         "Doesn't look like an integer"
-                               :type        type
-                               :default-val default-val}))
-        :char    (if-let [c (first (str/upper-case input))]
-                   c
-                   (get-input {:msg         "Doesn't look like a letter"
-                               :type        type
-                               :default-val default-val}))
-        :mixed   (let [i (parse (re-find #"\d" input))
-                       c (first (re-find #"[A-z]" (str/upper-case input)))]
-                   (if-not (or (nil? i) (nil? c))
-                     [(dec i) (as-int c)]
-                     (get-input {:msg  "Try entering a letter and a number"
-                                 :type :mixed})))
-        :default input)
+  (some-> (read-line) str/trim parse))
 
-      (not (nil? default-val))
-      default-val
+(defn read-char [msg]
+  (loop [msg msg]
+    (if msg (println msg))
+    (if-let [c (-> (read-line) str/trim str/upper-case first)]
+      c
+      (recur "We're looking for letters"))))
 
-      :else
-      (get-input {:msg msg :type type :default-val default-val}))))
+(defn read-move [msg]
+  (loop [msg msg]
+    (if msg (println msg))
+    (let [input (read-line)
+          i (parse (re-find #"\d" input))
+          c (first (re-find #"[A-z]" (str/upper-case input)))]
+      (if (not-any? nil? [i c])
+        [(dec i) (char->int c)]
+        (recur "We'd like to accomodate your choice but how can we?")))))
 
 (defn replay? []
-  (let [response (get-input {:msg "Play again? (YES/no)" :type :char :default-val \Y})]
+  (let [response (read-char "Play again? (YES/no)")]
     (cond (= \Y response) true
           (= \N response) false
           :else           (replay?))))
@@ -87,7 +76,7 @@
 (defn update-board [board player & message]
   (if (seq? message) (apply println message))
   (let [max-index (dec (count board))
-        [row col] (get-input {:msg "\nWhere would you like to move?" :type :mixed})]
+        [row col] (read-move (format "Where would you like to move, %s?" (str (name player))))]
 
     (cond
       (and (every? #(<= 0 % max-index) [row col])
@@ -98,6 +87,8 @@
       (update-board board player "That move appears to be impossible"))))
 
 ;; # Test game-over conditions
+
+;; ## build representation of all "slices" of board
 (defn rows [b]
   (let [size (count b)]
     (for [x (range size)]
@@ -132,10 +123,13 @@
                      (range size))
              ;; walk down edges
              (mapcat (fn [x y] (right-&-left-diagonals b x y))
-                     (interleave (range 1 size) (range 1 size))
+                     (mapcat (partial repeat 2) (range 1 size))
                      (cycle [0 (dec size)]))))))
 
-(defn winner [b win-length]
+;; ## Really test win-lose-draw-unfinished conditions
+(defn winner
+  "Returns player with 'win-length` in a row, or nil if neither players has won"
+  [b win-length]
   (let [size       (count b)
         slices (concat (rows b)
                        (columns b)
@@ -147,16 +141,17 @@
                   (partition-by identity slice)))
           slices)))
 
-(defn winnable? [coll win-length]
-  (loop [[head & tail] coll
+(defn winnable?
+  "Tests if a sequence can accomodate `length` of the same piece in a row"
+  [slice length]
+  (loop [[head & tail] slice
          x             0
          o             0]
-    (cond (or (= win-length x) (= win-length o)) true
-
-          (nil? head) false
+    (cond (or (= length x) (= length o)) true
+          (nil? head)                    false
 
           (= head :x) (recur tail (inc x) 0)
-          (= head :o) (recur tail 0       (inc o))
+          (= head :o) (recur tail 0 (inc o))
           :else       (recur tail (inc x) (inc o)))))
 
 (defn draw?
@@ -182,18 +177,15 @@
                               win-length
                               (next players))
       (= :draw r)       (do (println "It's a DRAW") nil)
-      :else             (do (println "The winner is" (re-find #"\w" (str r))) r))))
-
-(str :a)
+      :else             (do (println "The winner is" (name r)) r))))
 
 (defn new-game []
   (loop [score {:x 0 :o 0}]
-    (let [size       (get-input {:msg "What size grid would you like? DEFAULT: 3" :type :int :default-val 3})
-          win-length (get-input {:msg (str "How many symbols in a row to win? DEFAULT:" size) :type :int :default-val size})
-          winner     (game (new-board (parse size)) (parse win-length) (cycle [:x :o]))
-          score'     (if-not (nil? winner)
-                       (update score winner inc)
-                       score)]
+    (clear-screen)
+    (let [size       (or (read-int "What size grid would you like? DEFAULT: 3") 3)
+          win-length (or (read-int (str "How many symbols in a row to win? DEFAULT:" size)) size)
+          winner     (game (new-board size) win-length (cycle [:x :o]))
+          score'     (if-not (nil? winner) (update score winner inc) score)]
       (println "Score: x" (:x score') " o" (:o score'))
       (if (replay?)
         (recur score')

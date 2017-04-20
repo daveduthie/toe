@@ -2872,24 +2872,24 @@ net.brehaut.ClojureTools = (function (SH) {
   (:require [clojure.string :as str]))</pre></td></tr><tr><td class="docs"><h1>Create board</h1>
 </td><td class="codes"><pre class="brush: clojure">(defn new-board [size]
   (vec (repeat size (vec (repeat size :-)))))</pre></td></tr><tr><td class="docs"><h1>Draw board on screen</h1>
-</td><td class="codes"><pre class="brush: clojure">(defn as-char [i]
+</td><td class="codes"><pre class="brush: clojure">(defn int-&gt;char [i]
   (char (+ 65 i)))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn clear-screen []
+  (println (str (char 27) &quot;[2J&quot;))  ; clear screen
+  (println (str (char 27) &quot;[;H&quot;))) ; set cursor to top</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn render-board [b &amp; msg]
+  (clear-screen)
   (let [max-index (count b)]
-    (println (str (char 27) &quot;[2J&quot;)) ; clear screen
-    (println (str (char 27) &quot;[;H&quot;)) ; set cursor to top
     (if msg (apply println msg))
-    (apply println ; print letters along top
-           (interleave (cycle &quot; &quot;)
-                       (map #(as-char %) (range max-index))))
+    (println (str/join (map #(format &quot;   %c&quot; (int-&gt;char %)) (range max-index)))) ; print letters along top
     (doseq [row (range max-index)]
-      (print (inc row))  ; print numbers along left
+      (print (format &quot;%02d&quot; (inc row))) ; print numbers along left
       (doseq [col (range max-index)]
         (print (-&gt; (str (get-in b [row col]))
                    (clojure.string/replace #&quot;[:-]&quot; &quot; &quot;)))
         (if (&lt; col (dec max-index)) (print &quot; |&quot;)))
       (if (&lt; row (dec max-index))
-        (println &quot;\n&quot; (apply str (repeat (dec (* 4 max-index)) &quot;-&quot;)))
+        (println &quot;\n &quot; (apply str (repeat (dec (* 4 max-index)) &quot;-&quot;)))
         (println)))))</pre></td></tr><tr><td class="docs"><h1>Get input</h1>
 </td><td class="codes"><pre class="brush: clojure">(defn parse [x]
   (if (integer? x)
@@ -2897,57 +2897,46 @@ net.brehaut.ClojureTools = (function (SH) {
     (try (Integer/parseInt x)
          (catch NumberFormatException e
            nil))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn as-int [letter]
+</td><td class="codes"><pre class="brush: clojure">(defn char-&gt;int [letter]
   (let [c (if (string? letter)
             (first (str/upper-case letter))
             letter)]
-    (- (int c) 65)))</pre></td></tr><tr><td class="docs"><p>If you specify a type of <code>:int</code>, <code>:char</code>, or <code>:mixed</code> (one int and one char),
-  <code>get-input</code> will loop until it receives the info it expects.
-  Otherwise it gives you any old input--garbage in, garbage out.</p>
-</td><td class="codes"><pre class="brush: clojure">(defn get-input
-  [{:keys [msg type default-val]
-                  :or   {msg nil type :default default-val nil}}]
+    (- (int c) 65)))</pre></td></tr><tr><td class="docs"><p>May return nil. Call as <code>(or (read-int msg) default-value)</code></p>
+</td><td class="codes"><pre class="brush: clojure">(defn read-int
+  [msg]
   (if msg (println msg))
-  (let [input (clojure.string/trim (read-line))]
-    (cond
-      (not-empty input)
-      (case type
-        :int     (if-let [i (parse input)]
-                   i
-                   (get-input {:msg         &quot;Doesn't look like an integer&quot;
-                               :type        type
-                               :default-val default-val}))
-        :char    (if-let [c (first (str/upper-case input))]
-                   c
-                   (get-input {:msg         &quot;Doesn't look like a letter&quot;
-                               :type        type
-                               :default-val default-val}))
-        :mixed   (let [i (parse (re-find #&quot;\d&quot; input))
-                       c (first (re-find #&quot;[A-z]&quot; (str/upper-case input)))]
-                   (if-not (or (nil? i) (nil? c))
-                     [(dec i) (as-int c)]
-                     (get-input {:msg  &quot;Try entering a letter and a number&quot;
-                                 :type :mixed})))
-        :default input)
-      (not (nil? default-val))
-      default-val
-      :else
-      (get-input {:msg msg :type type :default-val default-val}))))</pre></td></tr><tr><td class="docs">
+  (some-&gt; (read-line) str/trim parse))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn read-char [msg]
+  (loop [msg msg]
+    (if msg (println msg))
+    (if-let [c (-&gt; (read-line) str/trim str/upper-case first)]
+      c
+      (recur &quot;We're looking for letters&quot;))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn read-move [msg]
+  (loop [msg msg]
+    (if msg (println msg))
+    (let [input (read-line)
+          i (parse (re-find #&quot;\d&quot; input))
+          c (first (re-find #&quot;[A-z]&quot; (str/upper-case input)))]
+      (if (not-any? nil? [i c])
+        [(dec i) (char-&gt;int c)]
+        (recur &quot;We'd like to accomodate your choice but how can we?&quot;)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn replay? []
-  (let [response (get-input {:msg &quot;Play again? (YES/no)&quot; :type :char :default-val \Y})]
+  (let [response (read-char &quot;Play again? (YES/no)&quot;)]
     (cond (= \Y response) true
           (= \N response) false
           :else           (replay?))))</pre></td></tr><tr><td class="docs"><h1>Update board</h1>
 </td><td class="codes"><pre class="brush: clojure">(defn update-board [board player &amp; message]
   (if (seq? message) (apply println message))
   (let [max-index (dec (count board))
-        [row col] (get-input {:msg &quot;\nWhere would you like to move?&quot; :type :mixed})]
+        [row col] (read-move (format &quot;Where would you like to move, %s?&quot; (str (name player))))]
     (cond
       (and (every? #(&lt;= 0 % max-index) [row col])
            (= :- (get-in board [row col])))
       (assoc-in board [row col] player)
       :else
       (update-board board player &quot;That move appears to be impossible&quot;))))</pre></td></tr><tr><td class="docs"><h1>Test game-over conditions</h1>
+</td><td class="codes"></td></tr><tr><td class="docs"><h2>build representation of all "slices" of board</h2>
 </td><td class="codes"><pre class="brush: clojure">(defn rows [b]
   (let [size (count b)]
     (for [x (range size)]
@@ -2979,9 +2968,12 @@ net.brehaut.ClojureTools = (function (SH) {
                      (range size))
              ;; walk down edges
              (mapcat (fn [x y] (right-&amp;-left-diagonals b x y))
-                     (interleave (range 1 size) (range 1 size))
-                     (cycle [0 (dec size)]))))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn winner [b win-length]
+                     (mapcat (partial repeat 2) (range 1 size))
+                     (cycle [0 (dec size)]))))))</pre></td></tr><tr><td class="docs"><p>Returns player with 'win-length` in a row, or nil if neither players has won</p>
+
+<h2>Really test win-lose-draw-unfinished conditions</h2>
+</td><td class="codes"><pre class="brush: clojure">(defn winner
+  [b win-length]
   (let [size       (count b)
         slices (concat (rows b)
                        (columns b)
@@ -2991,15 +2983,16 @@ net.brehaut.ClojureTools = (function (SH) {
                         (not= :- (first %))
                         (first %))
                   (partition-by identity slice)))
-          slices)))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn winnable? [coll win-length]
-  (loop [[head &amp; tail] coll
+          slices)))</pre></td></tr><tr><td class="docs"><p>Tests if a sequence can accomodate <code>length</code> of the same piece in a row</p>
+</td><td class="codes"><pre class="brush: clojure">(defn winnable?
+  [slice length]
+  (loop [[head &amp; tail] slice
          x             0
          o             0]
-    (cond (or (= win-length x) (= win-length o)) true
-          (nil? head) false
+    (cond (or (= length x) (= length o)) true
+          (nil? head)                    false
           (= head :x) (recur tail (inc x) 0)
-          (= head :o) (recur tail 0       (inc o))
+          (= head :o) (recur tail 0 (inc o))
           :else       (recur tail (inc x) (inc o)))))</pre></td></tr><tr><td class="docs"><p>Returns true if neither player can possibly get <code>win-length</code> in a row.</p>
 </td><td class="codes"><pre class="brush: clojure">(defn draw?
   [board win-length]
@@ -3020,16 +3013,14 @@ net.brehaut.ClojureTools = (function (SH) {
                               win-length
                               (next players))
       (= :draw r)       (do (println &quot;It's a DRAW&quot;) nil)
-      :else             (do (println &quot;The winner is&quot; (re-find #&quot;\w&quot; (str r))) r))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(str :a)</pre></td></tr><tr><td class="docs">
+      :else             (do (println &quot;The winner is&quot; (name r)) r))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn new-game []
   (loop [score {:x 0 :o 0}]
-    (let [size       (get-input {:msg &quot;What size grid would you like? DEFAULT: 3&quot; :type :int :default-val 3})
-          win-length (get-input {:msg (str &quot;How many symbols in a row to win? DEFAULT:&quot; size) :type :int :default-val size})
-          winner     (game (new-board (parse size)) (parse win-length) (cycle [:x :o]))
-          score'     (if-not (nil? winner)
-                       (update score winner inc)
-                       score)]
+    (clear-screen)
+    (let [size       (or (read-int &quot;What size grid would you like? DEFAULT: 3&quot;) 3)
+          win-length (or (read-int (str &quot;How many symbols in a row to win? DEFAULT:&quot; size)) size)
+          winner     (game (new-board size) win-length (cycle [:x :o]))
+          score'     (if-not (nil? winner) (update score winner inc) score)]
       (println &quot;Score: x&quot; (:x score') &quot; o&quot; (:o score'))
       (if (replay?)
         (recur score')
