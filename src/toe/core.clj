@@ -68,9 +68,10 @@
 
 (defn replay? []
   (let [response (read-char "Play again? (YES/no)")]
-    (cond (= \Y response) true
-          (= \N response) false
-          :else           (replay?))))
+    (condp = response
+      \Y           true
+      \N           false
+      :default (replay?))))
 
 ;; # Update board
 (defn update-board [board player & message]
@@ -172,12 +173,12 @@
 (defn game [board win-length players]
   (render-board board)
   (let [r (result board win-length)]
-    (cond
-      (= :unfinished r) (game (update-board board (first players))
-                              win-length
-                              (next players))
-      (= :draw r)       (do (println "It's a DRAW") nil)
-      :else             (do (println "The winner is" (name r)) r))))
+    (condp = r
+      :unfinished (game (update-board board (first players))
+                        win-length
+                        (next players))
+      :draw       (do (println "It's a DRAW") nil)
+      :default    (do (println "The winner is" (name r)) r))))
 
 (defn new-game []
   (loop [score {:x 0 :o 0}]

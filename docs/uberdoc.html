@@ -2923,9 +2923,10 @@ net.brehaut.ClojureTools = (function (SH) {
         (recur &quot;We'd like to accomodate your choice but how can we?&quot;)))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn replay? []
   (let [response (read-char &quot;Play again? (YES/no)&quot;)]
-    (cond (= \Y response) true
-          (= \N response) false
-          :else           (replay?))))</pre></td></tr><tr><td class="docs"><h1>Update board</h1>
+    (condp = response
+      \Y           true
+      \N           false
+      :default (replay?))))</pre></td></tr><tr><td class="docs"><h1>Update board</h1>
 </td><td class="codes"><pre class="brush: clojure">(defn update-board [board player &amp; message]
   (if (seq? message) (apply println message))
   (let [max-index (dec (count board))
@@ -3008,12 +3009,12 @@ net.brehaut.ClojureTools = (function (SH) {
 </td><td class="codes"><pre class="brush: clojure">(defn game [board win-length players]
   (render-board board)
   (let [r (result board win-length)]
-    (cond
-      (= :unfinished r) (game (update-board board (first players))
-                              win-length
-                              (next players))
-      (= :draw r)       (do (println &quot;It's a DRAW&quot;) nil)
-      :else             (do (println &quot;The winner is&quot; (name r)) r))))</pre></td></tr><tr><td class="docs">
+    (condp = r
+      :unfinished (game (update-board board (first players))
+                        win-length
+                        (next players))
+      :draw       (do (println &quot;It's a DRAW&quot;) nil)
+      :default    (do (println &quot;The winner is&quot; (name r)) r))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn new-game []
   (loop [score {:x 0 :o 0}]
     (clear-screen)
