@@ -2865,7 +2865,7 @@ net.brehaut.ClojureTools = (function (SH) {
     build_tree: build_tree
   };
 })(SyntaxHighlighter);
-</script><title>toe -- Marginalia</title></head><body><table><tr><td class="docs"><div class="header"><h1 class="project-name"><a href="github.com/daveduthie/toe">toe</a></h1><h2 class="project-version">0.1.0-SNAPSHOT</h2><br /><p>FIXME: write description</p>
+</script><title>toe -- Marginalia</title></head><body><table><tr><td class="docs"><div class="header"><h1 class="project-name"><a href="github.com/daveduthie/toe">toe</a></h1><h2 class="project-version">0.2.0</h2><br /><p>FIXME: write description</p>
 </div><div class="dependencies"><h3>dependencies</h3><table><tr><td class="dep-name">org.clojure/clojure</td><td class="dotted"><hr /></td><td class="dep-version">1.8.0</td></tr></table></div></td><td class="codes" style="text-align: center; vertical-align: middle;color: #666;padding-right:20px"><br /><br /><br />(this space intentionally left almost blank)</td></tr><tr><td class="docs"><div class="toc"><a name="toc"><h3>namespaces</h3></a><ul><li><a href="#toe.core">toe.core</a></li></ul></div></td><td class="codes">&nbsp;</td></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#toe.core" name="toe.core"><h1 class="project-name">toe.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns toe.core
   (:gen-class)
@@ -2921,6 +2921,12 @@ net.brehaut.ClojureTools = (function (SH) {
       (if (not-any? nil? [i c])
         [(dec i) (char-&gt;int c)]
         (recur &quot;We'd like to accomodate your choice but how can we?&quot;)))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn choose-computer-player []
+  (let [choice (read-char &quot;Should the computer play one part? (x o no)&quot;)]
+    (condp = choice
+      \X :x
+      \O :o
+      nil)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn replay? []
   (let [response (read-char &quot;Play again? (YES/no)&quot;)]
     (condp = response
@@ -2949,10 +2955,10 @@ net.brehaut.ClojureTools = (function (SH) {
         (if (legal? board pos)
           (assoc-in board pos player)
           (recur (inc max-tries)))))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn update-board [board player &amp; {:keys [message]}]
-  (condp = player
-    :x (update-board-human board player message)
-    :o (update-board-computer board player)))</pre></td></tr><tr><td class="docs"><h1>Test game-over conditions</h1>
+</td><td class="codes"><pre class="brush: clojure">(defn update-board [board player &amp; {:keys [message computer]}]
+  (if (= player computer)
+      (update-board-computer board player)
+      (update-board-human board player message)))</pre></td></tr><tr><td class="docs"><h1>Test game-over conditions</h1>
 </td><td class="codes"></td></tr><tr><td class="docs"><h2>build representation of all "slices" of board</h2>
 </td><td class="codes"><pre class="brush: clojure">(defn rows [b]
   (let [size (count b)]
@@ -3022,22 +3028,24 @@ net.brehaut.ClojureTools = (function (SH) {
   (if-let [w (winner board win-length)]
     w
     (if (draw? board win-length) :draw :unfinished)))</pre></td></tr><tr><td class="docs"><h1>Run game</h1>
-</td><td class="codes"><pre class="brush: clojure">(defn game [board win-length players]
+</td><td class="codes"><pre class="brush: clojure">(defn game [board win-length players computer]
   (render-board board)
   (let [r (result board win-length)]
     (condp = r
-      :unfinished (game (update-board board (first players))
+      :unfinished (game (update-board board (first players) :computer computer)
                         win-length
-                        (next players))
+                        (next players)
+                        computer)
       :draw       (do (println &quot;It's a DRAW&quot;) nil)
       (do (println &quot;The winner is&quot; (name r)) r))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn new-game []
   (loop [score {:x 0 :o 0}]
     (clear-screen)
-    (let [size       (or (read-int &quot;What size grid would you like? DEFAULT: 3&quot;) 3)
-          win-length (or (read-int (str &quot;How many symbols in a row to win? DEFAULT:&quot; size)) size)
-          winner     (game (new-board size) win-length (cycle [:x :o]))
-          score'     (if-not (nil? winner) (update score winner inc) score)]
+    (let [size        (or (read-int &quot;What size grid would you like? DEFAULT: 3&quot;) 3)
+          win-length  (or (read-int (str &quot;How many symbols in a row to win? DEFAULT:&quot; size)) size)
+          computer    (choose-computer-player)
+          winner      (game (new-board size) win-length (cycle [:x :o]) computer)
+          score'      (if-not (nil? winner) (update score winner inc) score)]
       (println &quot;Score: x&quot; (:x score') &quot; o&quot; (:o score'))
       (if (replay?)
         (recur score')

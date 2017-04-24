@@ -1,4 +1,4 @@
-(defproject toe "0.1.0-SNAPSHOT"
+(defproject toe "0.2.0"
   :description "FIXME: write description"
   :url "github.com/daveduthie/toe"
   :license {:name "Eclipse Public License"

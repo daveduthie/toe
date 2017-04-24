@@ -66,6 +66,13 @@
         [(dec i) (char->int c)]
         (recur "We'd like to accomodate your choice but how can we?")))))
 
+(defn choose-computer-player []
+  (let [choice (read-char "Should the computer play one part? (x o no)")]
+    (condp = choice
+      \X :x
+      \O :o
+      nil)))
+
 (defn replay? []
   (let [response (read-char "Play again? (YES/no)")]
     (condp = response
@@ -101,10 +108,10 @@
           (assoc-in board pos player)
           (recur (inc max-tries)))))))
 
-(defn update-board [board player & {:keys [message]}]
-  (condp = player
-    :x (update-board-human board player message)
-    :o (update-board-computer board player)))
+(defn update-board [board player & {:keys [message computer]}]
+  (if (= player computer)
+      (update-board-computer board player)
+      (update-board-human board player message)))
 
 ;; # Test game-over conditions
 
@@ -189,23 +196,25 @@
     (if (draw? board win-length) :draw :unfinished)))
 
 ;; # Run game
-(defn game [board win-length players]
+(defn game [board win-length players computer]
   (render-board board)
   (let [r (result board win-length)]
     (condp = r
-      :unfinished (game (update-board board (first players))
+      :unfinished (game (update-board board (first players) :computer computer)
                         win-length
-                        (next players))
+                        (next players)
+                        computer)
       :draw       (do (println "It's a DRAW") nil)
       (do (println "The winner is" (name r)) r))))
 
 (defn new-game []
   (loop [score {:x 0 :o 0}]
     (clear-screen)
-    (let [size       (or (read-int "What size grid would you like? DEFAULT: 3") 3)
-          win-length (or (read-int (str "How many symbols in a row to win? DEFAULT:" size)) size)
-          winner     (game (new-board size) win-length (cycle [:x :o]))
-          score'     (if-not (nil? winner) (update score winner inc) score)]
+    (let [size        (or (read-int "What size grid would you like? DEFAULT: 3") 3)
+          win-length  (or (read-int (str "How many symbols in a row to win? DEFAULT:" size)) size)
+          computer    (choose-computer-player)
+          winner      (game (new-board size) win-length (cycle [:x :o]) computer)
+          score'      (if-not (nil? winner) (update score winner inc) score)]
       (println "Score: x" (:x score') " o" (:o score'))
       (if (replay?)
         (recur score')

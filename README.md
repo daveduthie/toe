@@ -8,7 +8,7 @@
 
 FIXME: explanation
 
-    $ java -jar toe-0.1.0-standalone.jar [args]
+    $ java -jar toe-0.2.0-standalone.jar [args]
 
 ## Options
 
