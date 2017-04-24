@@ -2927,16 +2927,32 @@ net.brehaut.ClojureTools = (function (SH) {
       \Y           true
       \N           false
       :default (replay?))))</pre></td></tr><tr><td class="docs"><h1>Update board</h1>
-</td><td class="codes"><pre class="brush: clojure">(defn update-board [board player &amp; message]
+</td><td class="codes"><pre class="brush: clojure">(defn legal? [board [row col]]
+  (let [max-index (dec (count board))]
+    (and (every? #(&lt;= 0 % max-index) [row col])
+         (= :- (get-in board [row col])))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn update-board-human [board player message]
   (if (seq? message) (apply println message))
   (let [max-index (dec (count board))
-        [row col] (read-move (format &quot;Where would you like to move, %s?&quot; (str (name player))))]
+        pos (read-move (format &quot;Where would you like to move, %s?&quot; (str (name player))))]
     (cond
-      (and (every? #(&lt;= 0 % max-index) [row col])
-           (= :- (get-in board [row col])))
-      (assoc-in board [row col] player)
+      (legal? board pos)
+      (assoc-in board pos player)
       :else
-      (update-board board player &quot;That move appears to be impossible&quot;))))</pre></td></tr><tr><td class="docs"><h1>Test game-over conditions</h1>
+      (update-board-human board player &quot;That move appears to be impossible&quot;))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn update-board-computer [board player]
+  (loop [max-tries 0]
+    (if (&gt; max-tries 10000) (do (println &quot;I'm tired...&quot;)
+                               board))
+    (let [max-index ((count board))
+          pos [(rand-int max-index) (rand-int max-index)]]
+      (if (legal? board pos)
+        (assoc-in board pos player)
+        (recur (inc max-tries))))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn update-board [board player &amp;{:keys [message]}]
+  (condp = player
+    :x (update-board-human board player message)
+    :o (update-board-computer board player)))</pre></td></tr><tr><td class="docs"><h1>Test game-over conditions</h1>
 </td><td class="codes"></td></tr><tr><td class="docs"><h2>build representation of all "slices" of board</h2>
 </td><td class="codes"><pre class="brush: clojure">(defn rows [b]
   (let [size (count b)]
@@ -3011,8 +3027,8 @@ net.brehaut.ClojureTools = (function (SH) {
   (let [r (result board win-length)]
     (condp = r
       :unfinished (game (update-board board (first players))
-                        win-length
-                        (next players))
+                              win-length
+                              (next players))
       :draw       (do (println &quot;It's a DRAW&quot;) nil)
       :default    (do (println &quot;The winner is&quot; (name r)) r))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn new-game []

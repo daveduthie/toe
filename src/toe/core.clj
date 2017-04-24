@@ -74,18 +74,37 @@
       :default (replay?))))
 
 ;; # Update board
-(defn update-board [board player & message]
+(defn legal? [board [row col]]
+  (let [max-index (dec (count board))]
+    (and (every? #(<= 0 % max-index) [row col])
+         (= :- (get-in board [row col])))))
+
+(defn update-board-human [board player message]
   (if (seq? message) (apply println message))
   (let [max-index (dec (count board))
-        [row col] (read-move (format "Where would you like to move, %s?" (str (name player))))]
+        pos (read-move (format "Where would you like to move, %s?" (str (name player))))]
 
     (cond
-      (and (every? #(<= 0 % max-index) [row col])
-           (= :- (get-in board [row col])))
-      (assoc-in board [row col] player)
+      (legal? board pos)
+      (assoc-in board pos player)
 
       :else
-      (update-board board player "That move appears to be impossible"))))
+      (update-board-human board player "That move appears to be impossible"))))
+
+(defn update-board-computer [board player]
+  (loop [max-tries 0]
+    (if (> max-tries 10000) (do (println "I'm tired...")
+                               board))
+    (let [max-index ((count board))
+          pos [(rand-int max-index) (rand-int max-index)]]
+      (if (legal? board pos)
+        (assoc-in board pos player)
+        (recur (inc max-tries))))))
+
+(defn update-board [board player &{:keys [message]}]
+  (condp = player
+    :x (update-board-human board player message)
+    :o (update-board-computer board player)))
 
 ;; # Test game-over conditions
 
