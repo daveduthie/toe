@@ -71,7 +71,7 @@
     (condp = response
       \Y           true
       \N           false
-      :default (replay?))))
+      (replay?))))
 
 ;; # Update board
 (defn legal? [board [row col]]
@@ -197,7 +197,7 @@
                         win-length
                         (next players))
       :draw       (do (println "It's a DRAW") nil)
-      :default    (do (println "The winner is" (name r)) r))))
+      (do (println "The winner is" (name r)) r))))
 
 (defn new-game []
   (loop [score {:x 0 :o 0}]

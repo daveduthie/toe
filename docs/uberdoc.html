@@ -2926,7 +2926,7 @@ net.brehaut.ClojureTools = (function (SH) {
     (condp = response
       \Y           true
       \N           false
-      :default (replay?))))</pre></td></tr><tr><td class="docs"><h1>Update board</h1>
+      (replay?))))</pre></td></tr><tr><td class="docs"><h1>Update board</h1>
 </td><td class="codes"><pre class="brush: clojure">(defn legal? [board [row col]]
   (let [max-index (dec (count board))]
     (and (every? #(&lt;= 0 % max-index) [row col])
@@ -3027,10 +3027,10 @@ net.brehaut.ClojureTools = (function (SH) {
   (let [r (result board win-length)]
     (condp = r
       :unfinished (game (update-board board (first players))
-                              win-length
-                              (next players))
+                        win-length
+                        (next players))
       :draw       (do (println &quot;It's a DRAW&quot;) nil)
-      :default    (do (println &quot;The winner is&quot; (name r)) r))))</pre></td></tr><tr><td class="docs">
+      (do (println &quot;The winner is&quot; (name r)) r))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn new-game []
   (loop [score {:x 0 :o 0}]
     (clear-screen)
