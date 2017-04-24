@@ -2942,14 +2942,14 @@ net.brehaut.ClojureTools = (function (SH) {
       (update-board-human board player &quot;That move appears to be impossible&quot;))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn update-board-computer [board player]
   (loop [max-tries 0]
-    (if (&gt; max-tries 10000) (do (println &quot;I'm tired...&quot;)
-                               board))
-    (let [max-index ((count board))
-          pos [(rand-int max-index) (rand-int max-index)]]
-      (if (legal? board pos)
-        (assoc-in board pos player)
-        (recur (inc max-tries))))))</pre></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn update-board [board player &amp;{:keys [message]}]
+    (if (&gt; max-tries 10000)
+      (do (println &quot;I'm tired...&quot;) board)
+      (let [max-index (count board)
+            pos       [(rand-int max-index) (rand-int max-index)]]
+        (if (legal? board pos)
+          (assoc-in board pos player)
+          (recur (inc max-tries)))))))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn update-board [board player &amp; {:keys [message]}]
   (condp = player
     :x (update-board-human board player message)
     :o (update-board-computer board player)))</pre></td></tr><tr><td class="docs"><h1>Test game-over conditions</h1>

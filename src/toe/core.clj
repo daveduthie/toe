@@ -93,15 +93,15 @@
 
 (defn update-board-computer [board player]
   (loop [max-tries 0]
-    (if (> max-tries 10000) (do (println "I'm tired...")
-                               board))
-    (let [max-index ((count board))
-          pos [(rand-int max-index) (rand-int max-index)]]
-      (if (legal? board pos)
-        (assoc-in board pos player)
-        (recur (inc max-tries))))))
+    (if (> max-tries 10000)
+      (do (println "I'm tired...") board)
+      (let [max-index (count board)
+            pos       [(rand-int max-index) (rand-int max-index)]]
+        (if (legal? board pos)
+          (assoc-in board pos player)
+          (recur (inc max-tries)))))))
 
-(defn update-board [board player &{:keys [message]}]
+(defn update-board [board player & {:keys [message]}]
   (condp = player
     :x (update-board-human board player message)
     :o (update-board-computer board player)))
