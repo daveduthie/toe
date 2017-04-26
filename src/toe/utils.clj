@@ -74,7 +74,7 @@
     (some compare-choice players)))
 
 (defn replay? []
-  (let [response (read-char "Play again? (YES/no)")]
+  (let [response (read-char "Play again? (yes/no)")]
     (condp = response
       \Y           true
       \N           false

@@ -2897,9 +2897,13 @@ Now I need to to return the associated move!</p>
 negamax has 4 parameters</p>
 </td><td class="codes"><pre class="brush: clojure">(defn best-move-for
   [[p1 p2] board win-len depth]
-  (apply min-key
-         (fn [board'] (negamax [p2 p1] board' win-len depth))
-         (legal-moves-for p1 board)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#toe.core" name="toe.core"><h1 class="project-name">toe.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
+  (let [move (future
+               (apply
+                min-key
+                (fn [board'] (negamax [p2 p1] board' win-len depth))
+                (legal-moves-for p1 board)))]
+    (Thread/sleep 700)
+    (deref move)))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#toe.core" name="toe.core"><h1 class="project-name">toe.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns toe.core
   (:gen-class)
   (:require [clojure.string :as str]
@@ -3014,7 +3018,7 @@ negamax has 4 parameters</p>
                                       nil))]
     (some compare-choice players)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn replay? []
-  (let [response (read-char &quot;Play again? (YES/no)&quot;)]
+  (let [response (read-char &quot;Play again? (yes/no)&quot;)]
     (condp = response
       \Y           true
       \N           false

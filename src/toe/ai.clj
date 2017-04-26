@@ -35,6 +35,10 @@
 ;; negamax has 4 parameters
 (defn best-move-for
   [[p1 p2] board win-len depth]
-  (apply min-key
-         (fn [board'] (negamax [p2 p1] board' win-len depth))
-         (legal-moves-for p1 board)))
+  (let [move (future
+               (apply
+                min-key
+                (fn [board'] (negamax [p2 p1] board' win-len depth))
+                (legal-moves-for p1 board)))]
+    (Thread/sleep 700)
+    (deref move)))
