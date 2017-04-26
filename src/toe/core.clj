@@ -2,7 +2,7 @@
   (:gen-class)
   (:require [clojure.string :as str]
             [toe.utils :refer :all]
-            [toe.ai :refer [negamax]]))
+            [toe.ai :as ai]))
 
 ;; # Create board
 (defn new-board [size]
@@ -19,7 +19,7 @@
       :else              (update-board-human state player "That move appears to be impossible"))))
 
 (defn update-board-computer [player opponent {:keys [board win-len search-depth] :as state}]
-  (assoc state :board (:board (negamax [player opponent] board win-len search-depth))))
+  (assoc state :board (ai/best-move-for [player opponent] board win-len search-depth)))
 
 (defn update-board [{:keys [players computer players] :as state}]
   (let [p1 (first players)

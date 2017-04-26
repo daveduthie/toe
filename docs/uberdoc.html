@@ -2878,51 +2878,49 @@ net.brehaut.ClojureTools = (function (SH) {
   (map (fn [pos] (assoc-in board pos player))
        (legal-moves board)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn static-value [player result]
+  {:post [(integer? %)]}
   (condp = result
     :draw       0
     :unfinished 0
     player      1
-    -1))</pre></td></tr><tr><td class="docs"><p>Flip <code>:val</code> in a map</p>
-</td><td class="codes"><pre class="brush: clojure">(defn reverse-vals
-  [m]
-  (update m :val (partial * -1)))</pre></td></tr><tr><td class="docs"><p>(defn max-val [depth evaluations]
-  (if (= depth 3)
-    (apply max-key :val evaluations)
-    (apply max (map :val evaluations))))</p>
-</td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(defn max-val [depth evaluations]
-  (apply max (map :val evaluations)))</pre></td></tr><tr><td class="docs"><p>Negamax correctly returns the value.
+    -1))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn flip [i]
+  {:pre [(integer? i)]}
+  (* -1 i))</pre></td></tr><tr><td class="docs">
+</td><td class="codes"><pre class="brush: clojure">(defn max-val [depth]
+  (fn [d evaluations]
+    {:pre [(integer? d)
+           (seq? evaluations)
+           (every? integer? evaluations)]
+     :post [(not (nil? %))]}
+    (println &quot;evaluations: &quot; evaluations)
+    (apply max evaluations)))</pre></td></tr><tr><td class="docs"><p>Negamax correctly returns the value.
 Now I need to to return the associated move!</p>
-</td><td class="codes"><pre class="brush: clojure">(defn negamax [[player opponent] board win-len depth]
+</td><td class="codes"><pre class="brush: clojure">(defn negamax [[player opponent] board win-len depth max-v]
   ;; memoize here?
+  {:post [(not (nil? %))]}
   (let [r (result board win-len)]
     (if (or (not= :unfinished r) (zero? depth))
-      {:board board :val (static-value player r)}
-      {:board board
-       :val   (max-val
-               depth
-               (map (comp reverse-vals
-                          (fn [pos] (negamax [opponent player] (assoc-in board pos player) win-len (dec depth))))
-                    (legal-moves board)))})))</pre></td></tr><tr><td class="docs"><h1>SCRATCHPAD</h1>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>(let [col [{:b 'any :val 0}
-           {:b 'old :val -1}
-           {:b 'thing :val 1}]]
-  (apply max-key :val col))</p>
-</td><td class="codes"></td></tr><tr><td class="docs"><p>(let [col [{:b 'any :val 0}
-           {:b 'old :val -1}
-           {:b 'thing :val 1}]]
-  (map (fn [m] (update m :val (partial * -1)))
-       col))</p>
-</td><td class="codes"></td></tr><tr><td class="docs">
-</td><td class="codes"><pre class="brush: clojure">(let [b [[:x :o :-]
-         [:- :x :-]
-         [:- :- :o]]]
-  (negamax [:x :o] b 3 4))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#toe.core" name="toe.core"><h1 class="project-name">toe.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
+      (static-value player r)
+      (max-v depth (map (comp flip
+                              (fn [board']
+                                (negamax [opponent player] board' win-len (dec depth) max-v)))
+                        (legal-moves-for player board))))))</pre></td></tr><tr><td class="docs"><p>Now it seems to work but it's ugly.
+negamax has 5 parameters!
+(defn negamax-wrapper [[player opponent] board win-len depth]
+  (let [get-max (max-val depth)]
+    (:val (negamax [player opponent] board win-len depth get-max))))</p>
+</td><td class="codes"><pre class="brush: clojure">(defn best-move-for
+  [[p1 p2] board win-len depth]
+  (let [max-v (max-val depth)]
+    (apply min-key
+           (fn [board'] (negamax [p2 p1] board' win-len depth max-v))
+           (legal-moves-for p1 board))))</pre></td></tr><tr><td class="spacer docs">&nbsp;</td><td class="codes" /></tr><tr><td class="docs"><div class="docs-header"><a class="anchor" href="#toe.core" name="toe.core"><h1 class="project-name">toe.core</h1><a class="toc-link" href="#toc">toc</a></a></div></td><td class="codes" /></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(ns toe.core
   (:gen-class)
   (:require [clojure.string :as str]
             [toe.utils :refer :all]
-            [toe.ai :refer [negamax]]))</pre></td></tr><tr><td class="docs"><h1>Create board</h1>
+            [toe.ai :as ai]))</pre></td></tr><tr><td class="docs"><h1>Create board</h1>
 </td><td class="codes"><pre class="brush: clojure">(defn new-board [size]
   (vec (repeat size (vec (repeat size :-)))))</pre></td></tr><tr><td class="docs"><h1>Update board</h1>
 </td><td class="codes"><pre class="brush: clojure">(defn update-board-human [player state &amp; message]
@@ -2934,7 +2932,7 @@ Now I need to to return the associated move!</p>
       (legal? board pos) (assoc state :board (assoc-in board pos player))
       :else              (update-board-human state player &quot;That move appears to be impossible&quot;))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn update-board-computer [player opponent {:keys [board win-len search-depth] :as state}]
-  (assoc state :board (:board (negamax [player opponent] board win-len search-depth))))</pre></td></tr><tr><td class="docs">
+  (assoc state :board (ai/best-move-for [player opponent] board win-len search-depth)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn update-board [{:keys [players computer players] :as state}]
   (let [p1 (first players)
         p2 (second players)
