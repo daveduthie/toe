@@ -49,8 +49,14 @@ fi
 # If there are whitespace errors, print the offending file names and fail.
 # exec git diff-index --check --cached $against --
 
+echo "Stashing unstaged work"
+git stash save --include-untracked --keep-index
+
 echo "Running Marginalia"
 lein marg
+
+echo unstaging changes
+git stash pop
 
 if [ -z "$(git diff --exit-code -- docs)" ]; then
   # Working directory clean
