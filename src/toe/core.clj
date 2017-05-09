@@ -12,11 +12,10 @@
 (defn update-board-human [player state & message]
   (if (seq? message) (apply println message))
   (let [board     (:board state)
-        max-index (dec (count board))
         pos       (read-move (format "Where would you like to move, %s?" (name player)))]
-    (cond
-      (legal? board pos) (assoc state :board (assoc-in board pos player))
-      :else              (update-board-human player state "That move appears to be impossible"))))
+    (if (legal? board pos)
+      (assoc state :board (assoc-in board pos player))
+      (update-board-human player state "That move appears to be impossible"))))
 
 (defn update-board-computer [player opponent {:keys [board win-len search-depth] :as state}]
   (assoc state :board (ai/best-move-for [player opponent] board win-len search-depth)))
