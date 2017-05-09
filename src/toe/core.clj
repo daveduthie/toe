@@ -48,7 +48,7 @@
                          :board        (new-board size)
                          :players      players
                          :computer     (choose-computer-player (take 2 players))
-                         :search-depth 4}
+                         :search-depth 9}
           winner        (game initial-state)
           score'        (if-not (nil? winner) (update score winner inc) score)]
       (println "Score: x" (:x score') " o" (:o score'))

@@ -2944,7 +2944,7 @@ negamax has 4 parameters</p>
                          :board        (new-board size)
                          :players      players
                          :computer     (choose-computer-player (take 2 players))
-                         :search-depth 4}
+                         :search-depth 9}
           winner        (game initial-state)
           score'        (if-not (nil? winner) (update score winner inc) score)]
       (println &quot;Score: x&quot; (:x score') &quot; o&quot; (:o score'))
