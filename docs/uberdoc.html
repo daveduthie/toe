@@ -2891,8 +2891,7 @@ Now I need to to return the associated move!</p>
     (if (or (not= :unfinished r) (zero? depth))
       (static-value player r)
       (apply max
-             (map (comp (partial * -1)
-                        (fn [board'] (negamax [opponent player] board' win-len (dec depth))))
+             (map (fn [board'] (- (negamax [opponent player] board' win-len (dec depth))))
                   (legal-moves-for player board))))))</pre></td></tr><tr><td class="docs"><p>Now it seems to work but it's ugly.
 negamax has 4 parameters</p>
 </td><td class="codes"><pre class="brush: clojure">(defn best-move-for

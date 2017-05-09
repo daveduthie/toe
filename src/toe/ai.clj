@@ -27,8 +27,7 @@
     (if (or (not= :unfinished r) (zero? depth))
       (static-value player r)
       (apply max
-             (map (comp (partial * -1)
-                        (fn [board'] (negamax [opponent player] board' win-len (dec depth))))
+             (map (fn [board'] (- (negamax [opponent player] board' win-len (dec depth))))
                   (legal-moves-for player board))))))
 
 ;; Now it seems to work but it's ugly.
