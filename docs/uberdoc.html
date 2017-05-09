@@ -2918,7 +2918,7 @@ negamax has 4 parameters</p>
         pos       (read-move (format &quot;Where would you like to move, %s?&quot; (name player)))]
     (cond
       (legal? board pos) (assoc state :board (assoc-in board pos player))
-      :else              (update-board-human state player &quot;That move appears to be impossible&quot;))))</pre></td></tr><tr><td class="docs">
+      :else              (update-board-human player state &quot;That move appears to be impossible&quot;))))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn update-board-computer [player opponent {:keys [board win-len search-depth] :as state}]
   (assoc state :board (ai/best-move-for [player opponent] board win-len search-depth)))</pre></td></tr><tr><td class="docs">
 </td><td class="codes"><pre class="brush: clojure">(defn update-board [{:keys [players computer players] :as state}]
